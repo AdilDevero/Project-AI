@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Churn Prediction</title>
+</head>
+<body>
+    <h2>Churn Prediction</h2>
+    <form method="POST" action="/predict">
+        <input name="tenure" placeholder="Tenure"><br>
+        <input name="MonthlyCharges" placeholder="Monthly Charges"><br>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if prediction is defined %}
+        <h3>Prediction: {{ prediction }}</h3>
+    {% endif %}
+</body>
+</html>
