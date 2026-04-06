@@ -1,18 +1,242 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Churn Prediction</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Churn AI - Predictive Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Chart.js for stats -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h2>Churn Prediction</h2>
-    <form method="POST" action="/predict">
-        <input name="tenure" placeholder="Tenure"><br>
-        <input name="MonthlyCharges" placeholder="Monthly Charges"><br>
-        <button type="submit">Predict</button>
-    </form>
+    <div class="container">
+        <header class="header">
+            <h1>Churn Intelligence AI</h1>
+            <p style="color: var(--text-muted); font-size: 1.125rem;">Predict customer attrition with high-precision machine learning.</p>
+        </header>
 
-    {% if prediction is defined %}
-        <h3>Prediction: {{ prediction }}</h3>
-    {% endif %}
+        <div class="grid">
+            <!-- Prediction Form Card -->
+            <div class="card">
+                <h2>
+                    <span style="color: var(--primary);">●</span> 
+                    Predict Single Customer
+                </h2>
+                <form id="prediction-form">
+                    <div class="form-group">
+                        <label>Tenure (Months)</label>
+                        <input type="number" id="tenure" value="12" min="1" max="72" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Monthly Charges ($)</label>
+                        <input type="number" id="MonthlyCharges" value="50" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Charges ($)</label>
+                        <input type="number" id="TotalCharges" value="600" step="0.01" required>
+                    </div>
+                    <div class="grid" style="gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>Streaming Service</label>
+                            <select id="StreamingService">
+                                <option value="0">No</option>
+                                <option value="1">Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fiber Optic</label>
+                            <select id="FiberOptic">
+                                <option value="0">No</option>
+                                <option value="1">Yes</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Contract Type</label>
+                        <select id="ContractType">
+                            <option value="0">Month-to-Month</option>
+                            <option value="1">One Year</option>
+                            <option value="2">Two Year</option>
+                        </select>
+                    </div>
+                    <button type="submit" id="predict-btn">Analyze Risk Profile</button>
+                </form>
+
+                <div id="prediction-result" class="result">
+                    <div class="result-header" id="status-text">Healthy Profile</div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted);" id="prob-text">Churn Probability: 12%</div>
+                    <div class="probability-bar">
+                        <div id="prob-fill" class="probability-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Analytics & Bulk Upload -->
+            <div class="card">
+                <h2>
+                    <span style="color: var(--success);">●</span> 
+                    Model Analytics
+                </h2>
+                <div class="stats-grid" style="margin-bottom: 1.5rem;">
+                    <div class="stat-card">
+                        <div class="stat-value" id="model-accuracy">...</div>
+                        <div class="stat-label">Accuracy Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="model-algo">RF</div>
+                        <div class="stat-label">Algorithm</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <canvas id="featureChart" height="200"></canvas>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                    <h2 style="font-size: 1rem;">Bulk Analysis</h2>
+                    <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1rem;">Upload a CSV with customer data to generate predictions at scale.</p>
+                    <input type="file" id="bulk-upload" accept=".csv" style="margin-bottom: 1rem;">
+                    <button id="upload-btn" style="background: var(--success);">Generate Bulk Report</button>
+                    <div id="upload-status" style="margin-top: 0.5rem; font-size: 0.8125rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            &copy; 2026 Churn Intelligence AI. Advanced Predictive Modeling.
+        </footer>
+    </div>
+
+    <script>
+        // DOM Elements
+        const predictionForm = document.getElementById('prediction-form');
+        const predictBtn = document.getElementById('predict-btn');
+        const resultCard = document.getElementById('prediction-result');
+        const statusText = document.getElementById('status-text');
+        const probText = document.getElementById('prob-text');
+        const probFill = document.getElementById('prob-fill');
+        
+        const bulkUpload = document.getElementById('bulk-upload');
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadStatus = document.getElementById('upload-status');
+
+        // Fetch Model Metrics
+        async function loadModelMetrics() {
+            try {
+                const response = await fetch('/model_info');
+                const metrics = await response.json();
+                
+                document.getElementById('model-accuracy').textContent = (metrics.accuracy * 100).toFixed(1) + '%';
+                
+                // Initialize Chart
+                const ctx = document.getElementById('featureChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: metrics.feature_names.map(f => f.replace(/([A-Z])/g, ' $1').trim()),
+                        datasets: [{
+                            label: 'Importance Score',
+                            data: metrics.feature_importances,
+                            backgroundColor: 'rgba(99, 102, 241, 0.5)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
+                            y: { grid: { display: false } }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load metrics:', error);
+            }
+        }
+
+        // Handle Single Prediction
+        predictionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            predictBtn.textContent = 'Analyzing...';
+            predictBtn.disabled = true;
+
+            const payload = {
+                tenure: parseInt(document.getElementById('tenure').value),
+                MonthlyCharges: parseFloat(document.getElementById('MonthlyCharges').value),
+                TotalCharges: parseFloat(document.getElementById('TotalCharges').value),
+                StreamingService: parseInt(document.getElementById('StreamingService').value),
+                FiberOptic: parseInt(document.getElementById('FiberOptic').value),
+                ContractType: parseInt(document.getElementById('ContractType').value)
+            };
+
+            try {
+                const response = await fetch('/predict_single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                resultCard.classList.add('visible');
+                statusText.textContent = data.status;
+                statusText.style.color = data.prediction === 1 ? 'var(--danger)' : 'var(--success)';
+                probText.textContent = `Churn Probability: ${(data.churn_probability * 100).toFixed(1)}%`;
+                probFill.style.width = `${data.churn_probability * 100}%`;
+                probFill.style.backgroundColor = data.prediction === 1 ? 'var(--danger)' : 'var(--success)';
+
+            } catch (error) {
+                alert('Analysis failed: ' + error.message);
+            } finally {
+                predictBtn.textContent = 'Analyze Risk Profile';
+                predictBtn.disabled = false;
+            }
+        });
+
+        // Handle Bulk Upload
+        uploadBtn.addEventListener('click', async () => {
+            if (!bulkUpload.files[0]) {
+                alert('Please select a file.');
+                return;
+            }
+
+            uploadBtn.textContent = 'Processing Bulk Data...';
+            uploadBtn.disabled = true;
+            uploadStatus.textContent = '';
+
+            const formData = new FormData();
+            formData.append('file', bulkUpload.files[0]);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                uploadStatus.innerHTML = `<span style="color:var(--success)">Success!</span> ${data.count} predictions generated. <a href="/download?result_path=${data.result_path}" style="color:var(--primary); font-weight:bold;">Download Results</a>`;
+            } catch (error) {
+                uploadStatus.innerHTML = `<span style="color:var(--danger)">Error:</span> ${error.message}`;
+            } finally {
+                uploadBtn.textContent = 'Generate Bulk Report';
+                uploadBtn.disabled = false;
+            }
+        });
+
+        loadModelMetrics();
+    </script>
 </body>
 </html>
